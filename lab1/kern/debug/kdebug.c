@@ -302,19 +302,19 @@ print_stackframe(void) {
       *           NOTICE: the calling funciton's return addr eip  = ss:[ebp+4]
       *                   the calling funciton's ebp = ss:[ebp]
       */
-     uint32_t ebp = read_ebp(), eip = read_eip();//读取ebp和eip
+     uint32_t ebp = read_ebp();
+     uint32_t eip = read_eip();//读取ebp和eip
 
     int i, j;
     for (i = 0; ebp != 0 && i < STACKFRAME_DEPTH; i ++) {
-        cprintf("ebp:0x%08x eip:0x%08x args:", ebp, eip);//显示8位16进制数（32位二进制数）
-        uint32_t *args = (uint32_t *)ebp + 2;//参数的地址是ebp的地址+2
+        cprintf("ebp:0x%08x eip:0x%08x args:", ebp, eip);//显示8位16进制数(32位二进制数)
         for (j = 0; j < 4; j ++) {
-            cprintf("0x%08x ", args[j]);//输出参数（4个32位二进制数）
+            cprintf("0x%08x ", ((uint32_t*)ebp + 2)[j]);//输出参数(4个32位二进制数)，参数的地址比ebp的地址高两位
         }
         cprintf("\n");
         print_debuginfo(eip - 1);//打印前一条指令的信息
-        eip = ((uint32_t *)ebp)[1];
-        ebp = ((uint32_t *)ebp)[0];
+        eip = ((uint32_t *)ebp)[1];//eip比ebp的地址高一位
+        ebp = ((uint32_t *)ebp)[0];//取出上一层函数的ebp
     }
 }
 
