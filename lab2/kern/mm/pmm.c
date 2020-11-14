@@ -367,7 +367,7 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
             return NULL;
         }
         struct Page *page = alloc_page();// 新建页并调用alloc_page函数为page分配页
-        set_page_ref(page, 1); // 设置page的引用次数reg加一
+        set_page_ref(page, 1); // 设置page的引用次数reg为一
         uintptr_t pa = page2pa(page);  //get linear address of page //pa为该页物理地址
         memset(KADDR(pa), 0, PGSIZE);
         *pdep = pa | PTE_U | PTE_W | PTE_P; //将pa放入*pdep处的页表中并设置控制位
@@ -406,7 +406,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
      * MACROs or Functions:
      *   struct Page *page pte2page(*ptep): get the according page from the value of a ptep
      *   free_page : free a page
-     *   page_ref_dec(page) : decrease page->ref. NOTICE: ff page->ref == 0 , then this page should be free.
+     *   page_ref_dec(page) : decrease page->ref. NOTICE: if page->ref == 0 , then this page should be free.
      *   tlb_invalidate(pde_t *pgdir, uintptr_t la) : Invalidate a TLB entry, but only if the page tables being
      *                        edited are the ones currently in use by the processor.
      * DEFINEs:
@@ -421,6 +421,14 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
+    if(*ptep & PTE_P)
+    {
+        struct Page * page = pte2page(ptep);//获取要释放的页面
+        if(!page_ref_dec(page))//如果该页的引用次数为0，它将会被释放
+            free_page(page);
+        *ptep = 0;//清除页表存储的地址
+        tlb_invalidate(pgdir, la);//刷新TLB（快表）
+    }
 }
 
 //page_remove - free an Page which is related linear address la and has an validated pte
