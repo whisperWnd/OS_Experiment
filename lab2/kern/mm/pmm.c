@@ -326,6 +326,8 @@ pmm_init(void) {
 // return vaule: the kernel virtual address of this pte
 pte_t *
 get_pte(pde_t *pgdir, uintptr_t la, bool create) {
+    //三个参数为PDE表head指针，虚拟地址la，发生缺页时是否需要加页create
+    //最后返回的是虚拟地址la对应的PTE
     /* LAB2 EXERCISE 2: YOUR CODE
      *
      * If you need to visit a physical address, please use KADDR()
@@ -335,30 +337,45 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
      *
      * Some Useful MACROs and DEFINEs, you can use them in below implementation.
      * MACROs or Functions:
-     *   PDX(la) = the index of page directory entry of VIRTUAL ADDRESS la.
+     *   PDX(la) = the index of page directory entry of VIRTUAL ADDRESS la. 
+     *   PDX(la)获取虚拟地址la的31-22位即它PDE的索引
+     * 
      *   KADDR(pa) : takes a physical address and returns the corresponding kernel virtual address.
-     *   set_page_ref(page,1) : means the page be referenced by one time
-     *   page2pa(page): get the physical address of memory which this (struct Page *) page  manages
+     *   KADDR(pa)函数用来直接访问pa这个物理地址
+     * 
+     *   set_page_ref(page,1) : means the page be referenced by one time 
+     *   set_page_ref(page,1)函数将page的reg参数+1
+     * 
+     *   page2pa(page): get the physical address of memory which this (struct Page *) page  manages 
+     *   page2pa(page)获取页的物理地址
+     * 
      *   struct Page * alloc_page() : allocation a page
-     *   memset(void *s, char c, size_t n) : sets the first n bytes of the memory area pointed by s
-     *                                       to the specified value c.
+     *   struct Page * alloc_page()用来分配页
+     * 
+     *   memset(void *s, char c, size_t n) : sets the first n bytes of the memory area pointed by s to the specified value c.
+     *   memset(void *s, char c, size_t n)设置由s指向的内存区域的前n个字节为c
+     *                                       
      * DEFINEs:
-     *   PTE_P           0x001                   // page table/directory entry flags bit : Present
-     *   PTE_W           0x002                   // page table/directory entry flags bit : Writeable
-     *   PTE_U           0x004                   // page table/directory entry flags bit : User can access
+     *   PTE_P           0x001                   // page table/directory entry flags bit : Present 表示存在
+     *   PTE_W           0x002                   // page table/directory entry flags bit : Writeable 表示可写
+     *   PTE_U           0x004                   // page table/directory entry flags bit : User can access 表示用户可访问
      */
-#if 0
-    pde_t *pdep = NULL;   // (1) find page directory entry
-    if (0) {              // (2) check if entry is not present
-                          // (3) check if creating is needed, then alloc page for page table
-                          // CAUTION: this page is used for page table, not for common data page
-                          // (4) set page reference
-        uintptr_t pa = 0; // (5) get linear address of page
-                          // (6) clear page content using memset
-                          // (7) set page directory entry's permission
+    uintptr_t *pdep = &pgdir[PDX(la)];  //find page directory entry //变量pdep获取PDE表中索引为虚拟地址la高10位的值，即该虚拟地址所在的PTE表的head地址
+    if (!(*pdep & PTE_P)) { // check if entry is not present //检查找到的PTE表中的标志位是否为PTE_P，如果不是则说明PTE表不存在
+        //create==0表示不需要分配
+        if (!create) { 
+            return NULL;
+        }
+        struct Page *page = alloc_page();// 新建页并调用alloc_page函数为page分配页
+        set_page_ref(page, 1); // 设置page的引用次数reg加一
+        uintptr_t pa = page2pa(page);  //get linear address of page //pa为该页物理地址
+        memset(KADDR(pa), 0, PGSIZE);
+        *pdep = pa | PTE_U | PTE_W | PTE_P; //将pa放入*pdep处的页表中并设置控制位
     }
-    return NULL;          // (8) return page table entry
-#endif
+    return &((pte_t *)KADDR(PDE_ADDR(*pdep)))[PTX(la)]; 
+    //PDE_ADDR(*pdep)将*pdep中的值转化为对应PTE表的物理地址并通过KADDR直接访问
+    //PTX(la)为虚拟地址la的中间10位，即PTE表项索引
+    //二者结合就是la的PTE了
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
