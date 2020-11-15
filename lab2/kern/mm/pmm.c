@@ -423,7 +423,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
 #endif
     if(*ptep & PTE_P)
     {
-        struct Page * page = pte2page(ptep);//获取要释放的页面
+        struct Page * page = pte2page(*ptep);//获取要释放的页面
         if(!page_ref_dec(page))//如果该页的引用次数为0，它将会被释放
             free_page(page);
         *ptep = 0;//清除页表存储的地址
