@@ -77,6 +77,39 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
      return 0;
 }
 
+static int 
+_extended_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
+{
+    list_entry_t *head = (list_entry_t*) mm->sm_priv;
+    assert(head != NULL);
+    assert(in_tick==0);
+    list_entry_t *entry = head->prev;
+    assert(entry != head);
+    do{
+        struct Page *p = le2page(entry, pra_page_link);
+        assert(p != NULL);
+        pte_t *ptep = get_pte(mm->pgdir, p->pra_vaddr, 0);
+        if(ptep < 0x1000)
+        {
+            cprintf("unvalid address!");
+            break;
+        }
+        if(*ptep & PTE_D)
+        {
+            *ptep = *ptep&~PTE_D;
+            entry = entry->prev;
+        }
+        else
+        {
+            list_del(entry);
+            *ptr_page = p;
+            return 0;
+        } 
+    }while(entry != head);
+    _fifo_swap_out_victim(mm, ptr_page, in_tick);
+    return 0;
+}
+
 static int
 _fifo_check_swap(void) {
     cprintf("write Virt Page c in fifo_check_swap\n");
@@ -145,6 +178,7 @@ struct swap_manager swap_manager_fifo =
      .tick_event      = &_fifo_tick_event,
      .map_swappable   = &_fifo_map_swappable,
      .set_unswappable = &_fifo_set_unswappable,
-     .swap_out_victim = &_fifo_swap_out_victim,
+     //.swap_out_victim = &_fifo_swap_out_victim,
+     .swap_out_victim = &_extended_clock_swap_out_victim,
      .check_swap      = &_fifo_check_swap,
 };
