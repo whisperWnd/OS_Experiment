@@ -15,7 +15,7 @@
   There a linear link list for vma & a redblack link list for vma in mm.
 ---------------
   mm related functions:
-   golbal functions
+   global functions
      struct mm_struct * mm_create(void)
      void mm_destroy(struct mm_struct *mm)
      int do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr)
@@ -396,7 +396,43 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
         }
    }
 #endif
-   ret = 0;
+    ptep = get_pte(mm->pgdir, addr, 1);
+    if(ptep == NULL)//pte获取失败
+    {
+       cprintf("get_pte() in do_pgfault() failed!");
+       goto failed;
+    }
+    if(*ptep == 0)//如果二级页表是新分配的，则具体的页表项应该不存在
+    {
+        if(pgdir_alloc_page(mm->pgdir, addr, perm) == NULL)//尝试建立新物理页表并建立映射关系
+        {
+            cprintf("pgdir_alloc_page() in do_pgfault() failed!");
+            goto failed;
+        }
+    }
+    else
+    {
+       if(swap_init_ok)
+       {
+            struct Page* page = NULL;
+            if(ret = swap_in(mm, addr, &page) != 0)//用mm结构和addr地址尝试将内存换入page
+            {
+                cprintf("swap_in() in do_pgfault() failed!");
+                goto failed;
+            } 
+            page_insert(mm->pgdir, page, addr, perm);//建立虚拟地址和物理地址的映射关系
+            swap_map_swappable(mm, addr, page, 1);//将该页设置为可置换的
+            page->pra_vaddr = addr;
+            //assert(page_ref(page) == 1);
+       }
+       else 
+       {
+            cprintf("no swap_init_ok but ptep is %x, failed\n",*ptep);
+            goto failed;
+       }
+    }
+
+    ret = 0;
 failed:
     return ret;
 }
