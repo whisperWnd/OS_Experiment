@@ -38,7 +38,7 @@ swap_init(void)
      }
      
 
-     sm = &swap_manager_fifo;
+     sm = &swap_manager_clock;
      int r = sm->init();
      
      if (r == 0)

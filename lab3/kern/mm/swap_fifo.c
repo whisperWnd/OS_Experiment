@@ -38,9 +38,19 @@ _fifo_init_mm(struct mm_struct *mm)
      //cprintf(" mm->sm_priv %x in fifo_init_mm\n",mm->sm_priv);
      return 0;
 }
+
+_clock_init_mm(struct mm_struct *mm)
+{     
+     list_init(&pra_list_head);
+     mm->sm_priv = &pra_list_head;
+     //cprintf(" mm->sm_priv %x in clock_init_mm\n",mm->sm_priv);
+     return 0;
+}
+
 /*
  * (3)_fifo_map_swappable: According FIFO PRA, we should link the most recent arrival page at the back of pra_list_head qeueue
  */
+
 static int
 _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
 {
@@ -54,6 +64,23 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
     list_add_after(head, entry);
     return 0;
 }
+
+static int
+_clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
+{
+    list_entry_t *head=(list_entry_t*) mm->sm_priv;
+    list_entry_t *entry=&(page->pra_page_link);
+ 
+    assert(entry != NULL && head != NULL);
+    list_add_after(head, entry);
+    pte_t *ptep = get_pte(mm->pgdir, page->pra_vaddr, 0);
+    if(ptep != NULL)
+    {
+        *ptep &= ~PTE_D;
+    } 
+    return 0;
+}
+
 /*
  *  (4)_fifo_swap_out_victim: According FIFO PRA, we should unlink the  earliest arrival page in front of pra_list_head qeueue,
  *                            then assign the value of *ptr_page to the addr of this page.
@@ -78,7 +105,7 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
 }
 
 static int 
-_extended_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
+_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
 {
     list_entry_t *head = (list_entry_t*) mm->sm_priv;
     assert(head != NULL);
@@ -94,20 +121,26 @@ _extended_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, i
             cprintf("unvalid address!");
             break;
         }
-        if(*ptep & PTE_D)
+        if(*ptep & PTE_A)
         {
-            *ptep = *ptep&~PTE_D;
-            entry = entry->prev;
+            *ptep &= ~PTE_A;
         }
         else
         {
-            list_del(entry);
-            *ptr_page = p;
-            return 0;
-        } 
-    }while(entry != head);
-    _fifo_swap_out_victim(mm, ptr_page, in_tick);
-    return 0;
+            if(*ptep & PTE_D)
+            {
+                *ptep &= ~PTE_D;
+            }
+            else
+            {
+                list_del(entry);
+                *ptr_page = p;
+                return 0;  
+            }   
+        }
+        entry = entry->prev; 
+    }while(1);
+    return -1;
 }
 
 static int
@@ -152,9 +185,56 @@ _fifo_check_swap(void) {
     return 0;
 }
 
+static int
+_clock_check_swap(void) {
+    cprintf("write Virt Page c in fifo_check_swap\n");
+    *(unsigned char *)0x3000 = 0x0c;
+    assert(pgfault_num==4);
+    cprintf("write Virt Page a in fifo_check_swap\n");
+    *(unsigned char *)0x1000 = 0x0a;
+    assert(pgfault_num==4);
+    cprintf("write Virt Page d in fifo_check_swap\n");
+    *(unsigned char *)0x4000 = 0x0d;
+    assert(pgfault_num==4);
+    cprintf("write Virt Page b in fifo_check_swap\n");
+    *(unsigned char *)0x2000 = 0x0b;
+    assert(pgfault_num==4);
+    cprintf("write Virt Page e in fifo_check_swap\n");
+    *(unsigned char *)0x5000 = 0x0e;
+    assert(pgfault_num==5);
+    cprintf("write Virt Page b in fifo_check_swap\n");
+    *(unsigned char *)0x2000 = 0x0b;
+    assert(pgfault_num==5);
+    cprintf("write Virt Page a in fifo_check_swap\n");
+    *(unsigned char *)0x1000 = 0x0a;
+    assert(pgfault_num==6);
+    cprintf("write Virt Page b in fifo_check_swap\n");
+    *(unsigned char *)0x2000 = 0x0b;
+    assert(pgfault_num==7);
+    cprintf("write Virt Page c in fifo_check_swap\n");
+    *(unsigned char *)0x3000 = 0x0c;
+    assert(pgfault_num==8);
+    cprintf("write Virt Page d in fifo_check_swap\n");
+    *(unsigned char *)0x4000 = 0x0d;
+    assert(pgfault_num==9);
+    cprintf("write Virt Page e in fifo_check_swap\n");
+    *(unsigned char *)0x5000 = 0x0e;
+    assert(pgfault_num==10);
+    cprintf("write Virt Page a in fifo_check_swap\n");
+    assert(*(unsigned char *)0x1000 == 0x0a);
+    *(unsigned char *)0x1000 = 0x0a;
+    assert(pgfault_num==11);
+    return 0;
+}
 
 static int
 _fifo_init(void)
+{
+    return 0;
+}
+
+static int
+_clock_init(void)
 {
     return 0;
 }
@@ -166,9 +246,18 @@ _fifo_set_unswappable(struct mm_struct *mm, uintptr_t addr)
 }
 
 static int
+_clock_set_unswappable(struct mm_struct *mm, uintptr_t addr)
+{
+    return 0;
+}
+
+static int
 _fifo_tick_event(struct mm_struct *mm)
 { return 0; }
 
+static int
+_clock_tick_event(struct mm_struct *mm)
+{ return 0; }
 
 struct swap_manager swap_manager_fifo =
 {
@@ -178,7 +267,18 @@ struct swap_manager swap_manager_fifo =
      .tick_event      = &_fifo_tick_event,
      .map_swappable   = &_fifo_map_swappable,
      .set_unswappable = &_fifo_set_unswappable,
-     //.swap_out_victim = &_fifo_swap_out_victim,
-     .swap_out_victim = &_extended_clock_swap_out_victim,
+     .swap_out_victim = &_fifo_swap_out_victim,
      .check_swap      = &_fifo_check_swap,
+};
+
+struct swap_manager swap_manager_clock =
+{
+     .name            = "extended clock swap manager",
+     .init            = &_clock_init,
+     .init_mm         = &_clock_init_mm,
+     .tick_event      = &_clock_tick_event,
+     .map_swappable   = &_clock_map_swappable,
+     .set_unswappable = &_clock_set_unswappable,
+     .swap_out_victim = &_clock_swap_out_victim,
+     .check_swap      = &_clock_check_swap,
 };
