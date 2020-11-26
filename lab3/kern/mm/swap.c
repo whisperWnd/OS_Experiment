@@ -87,7 +87,7 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
           //struct Page **ptr_page=NULL;
           struct Page *page;
           // cprintf("i %d, SWAP: call swap_out_victim\n",i);
-          int r = sm->swap_out_victim(mm, &page, in_tick);
+          int r = sm->swap_out_victim(mm, &page, in_tick, sm->curr);
           if (r != 0) {
                     cprintf("i %d, swap_out: call swap_out_victim failed\n",i);
                   break;

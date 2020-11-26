@@ -77,6 +77,7 @@ _clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, in
     if(ptep != NULL)
     {
         *ptep &= ~PTE_D;
+        *ptep |= PTE_A;
     } 
     return 0;
 }
@@ -86,7 +87,7 @@ _clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, in
  *                            then assign the value of *ptr_page to the addr of this page.
  */
 static int
-_fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
+_fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick, list_entry_t *curr)
 {
      list_entry_t *head=(list_entry_t*) mm->sm_priv;
          assert(head != NULL);
@@ -105,15 +106,16 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
 }
 
 static int 
-_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick)
+_clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick, list_entry_t *curr)
 {
     list_entry_t *head = (list_entry_t*) mm->sm_priv;
     assert(head != NULL);
     assert(in_tick==0);
-    list_entry_t *entry = head->prev;
-    assert(entry != head);
+    if(curr == NULL)
+        curr = head->prev;
+    //assert(curr != head);
     do{
-        struct Page *p = le2page(entry, pra_page_link);
+        struct Page *p = le2page(curr, pra_page_link);
         assert(p != NULL);
         pte_t *ptep = get_pte(mm->pgdir, p->pra_vaddr, 0);
         if(ptep < 0x1000)
@@ -124,21 +126,24 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
         if(*ptep & PTE_A)
         {
             *ptep &= ~PTE_A;
+            cprintf("PTE_A is set to 0\n");
         }
         else
         {
             if(*ptep & PTE_D)
             {
                 *ptep &= ~PTE_D;
+                cprintf("PTE_D is set to 0\n");
             }
             else
             {
-                list_del(entry);
+                curr = curr->prev;
+                list_del(curr->next);
                 *ptr_page = p;
                 return 0;  
             }   
         }
-        entry = entry->prev; 
+        curr = curr->prev; 
     }while(1);
     return -1;
 }
@@ -269,6 +274,7 @@ struct swap_manager swap_manager_fifo =
      .set_unswappable = &_fifo_set_unswappable,
      .swap_out_victim = &_fifo_swap_out_victim,
      .check_swap      = &_fifo_check_swap,
+     .curr            = NULL,
 };
 
 struct swap_manager swap_manager_clock =
@@ -281,4 +287,5 @@ struct swap_manager swap_manager_clock =
      .set_unswappable = &_clock_set_unswappable,
      .swap_out_victim = &_clock_swap_out_victim,
      .check_swap      = &_clock_check_swap,
+     .curr            = NULL,
 };

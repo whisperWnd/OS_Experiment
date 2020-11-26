@@ -33,6 +33,8 @@ extern size_t max_swap_offset;
 struct swap_manager
 {
      const char *name;
+     /* pointer prepared for extended clock PRA*/
+     list_entry_t *curr;
      /* Global initialization for the swap manager */
      int (*init)            (void);
      /* Initialize the priv data inside mm_struct */
@@ -45,9 +47,10 @@ struct swap_manager
       * delete the addr entry from the swap manager */
      int (*set_unswappable) (struct mm_struct *mm, uintptr_t addr);
      /* Try to swap out a page, return then victim */
-     int (*swap_out_victim) (struct mm_struct *mm, struct Page **ptr_page, int in_tick);
+     int (*swap_out_victim) (struct mm_struct *mm, struct Page **ptr_page, int in_tick, list_entry_t *curr);
      /* check the page relpacement algorithm */
-     int (*check_swap)(void);     
+     int (*check_swap)(void);   
+     /*return pointer*/ 
 };
 
 extern volatile int swap_init_ok;
