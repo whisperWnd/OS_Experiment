@@ -4,4 +4,5 @@
 #include <swap.h>
 extern struct swap_manager swap_manager_fifo;
 extern struct swap_manager swap_manager_clock;
+extern struct swap_manager swap_manager_lru;
 #endif
