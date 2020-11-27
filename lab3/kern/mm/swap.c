@@ -64,9 +64,9 @@ swap_tick_event(struct mm_struct *mm)
 }
 
 int
-swap_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
+swap_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in, list_entry_t *curr)
 {
-     return sm->map_swappable(mm, addr, page, swap_in);
+     return sm->map_swappable(mm, addr, page, swap_in, sm->curr);
 }
 
 int
@@ -102,7 +102,7 @@ swap_out(struct mm_struct *mm, int n, int in_tick)
 
           if (swapfs_write( (page->pra_vaddr/PGSIZE+1)<<8, page) != 0) {
                     cprintf("SWAP: failed to save\n");
-                    sm->map_swappable(mm, v, page, 0);
+                    sm->map_swappable(mm, v, page, 0, sm->curr);
                     continue;
           }
           else {

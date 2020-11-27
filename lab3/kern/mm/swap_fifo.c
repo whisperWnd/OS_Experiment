@@ -52,7 +52,7 @@ _clock_init_mm(struct mm_struct *mm)
  */
 
 static int
-_fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
+_fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in, list_entry_t *curr)
 {
     list_entry_t *head=(list_entry_t*) mm->sm_priv;
     list_entry_t *entry=&(page->pra_page_link);
@@ -66,17 +66,23 @@ _fifo_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int
 }
 
 static int
-_clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in)
+_clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in, list_entry_t *curr)
 {
     list_entry_t *head=(list_entry_t*) mm->sm_priv;
     list_entry_t *entry=&(page->pra_page_link);
  
     assert(entry != NULL && head != NULL);
-    list_add_after(head, entry);
+    if(curr == NULL)
+    {
+        list_add_after(head, entry);
+    }
+    else
+    {
+        list_add_after(curr, entry);
+    }
     pte_t *ptep = get_pte(mm->pgdir, page->pra_vaddr, 0);
     if(ptep != NULL)
     {
-        *ptep &= ~PTE_D;
         *ptep |= PTE_A;
     } 
     return 0;

@@ -42,7 +42,7 @@ struct swap_manager
      /* Called when tick interrupt occured */
      int (*tick_event)      (struct mm_struct *mm);
      /* Called when map a swappable page into the mm_struct */
-     int (*map_swappable)   (struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in);
+     int (*map_swappable)   (struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in, list_entry_t *curr);
      /* When a page is marked as shared, this routine is called to
       * delete the addr entry from the swap manager */
      int (*set_unswappable) (struct mm_struct *mm, uintptr_t addr);
@@ -57,7 +57,7 @@ extern volatile int swap_init_ok;
 int swap_init(void);
 int swap_init_mm(struct mm_struct *mm);
 int swap_tick_event(struct mm_struct *mm);
-int swap_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in);
+int swap_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int swap_in, list_entry_t *curr);
 int swap_set_unswappable(struct mm_struct *mm, uintptr_t addr);
 int swap_out(struct mm_struct *mm, int n, int in_tick);
 int swap_in(struct mm_struct *mm, uintptr_t addr, struct Page **ptr_result);
