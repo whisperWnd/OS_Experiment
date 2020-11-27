@@ -38,7 +38,9 @@ swap_init(void)
      }
      
 
-     sm = &swap_manager_clock;
+     //sm = &swap_manager_fifo;
+     //sm = &swap_manager_clock;
+     sm = &swap_manager_lru; //调试各个算法
      int r = sm->init();
      
      if (r == 0)
