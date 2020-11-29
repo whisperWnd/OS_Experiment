@@ -222,7 +222,7 @@ _lru_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick,
         }
 	   else
         {
-	    cprintf("If you saw this, it means the \"while\" do nothing\n");
+	    //cprintf("If you saw this, it means the \"while\" do nothing\n");
 	    curr = curr->prev;
     	   }
     }
@@ -321,43 +321,42 @@ _clock_check_swap(void) {
 
 static int
 _lru_check_swap(void) {
-    cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char *)0x3000 = 0x0c;
+    cprintf("read Virt Page c in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x3000);
     assert(pgfault_num==4);
-    cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char *)0x1000 = 0x0a;
+    cprintf("read Virt Page a in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x1000);
     assert(pgfault_num==4);
-    cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char *)0x4000 = 0x0d;
+    cprintf("read Virt Page d in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x4000);
     assert(pgfault_num==4);
-    cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char *)0x2000 = 0x0b;
+    cprintf("read Virt Page b in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x2000);
     assert(pgfault_num==4);
-    cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char *)0x5000 = 0x0e;
+    cprintf("read Virt Page e in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x5000);
     assert(pgfault_num==5);
-    cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char *)0x2000 = 0x0b;
+    cprintf("read Virt Page b in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x2000);
     assert(pgfault_num==5);
-    cprintf("write Virt Page a in lru_check_swap\n");
-    *(unsigned char *)0x1000 = 0x0a;
+    cprintf("read Virt Page a in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x1000);
     assert(pgfault_num==6);
-    cprintf("write Virt Page b in lru_check_swap\n");
-    *(unsigned char *)0x2000 = 0x0b;
+    cprintf("read Virt Page b in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x2000);
+    assert(pgfault_num==6);
+    cprintf("read Virt Page c in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x3000);
     assert(pgfault_num==7);
-    cprintf("write Virt Page c in lru_check_swap\n");
-    *(unsigned char *)0x3000 = 0x0c;
+    cprintf("read Virt Page d in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x4000);
     assert(pgfault_num==8);
-    cprintf("write Virt Page d in lru_check_swap\n");
-    *(unsigned char *)0x4000 = 0x0d;
-    assert(pgfault_num==9);
-    cprintf("write Virt Page e in lru_check_swap\n");
-    *(unsigned char *)0x5000 = 0x0e;
-    assert(pgfault_num==10);
-    cprintf("write Virt Page a in lru_check_swap\n");
-    assert(*(unsigned char *)0x1000 == 0x0a);
-    *(unsigned char *)0x1000 = 0x0a;
-    assert(pgfault_num==11);
+    cprintf("read Virt Page e in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x5000);
+    assert(pgfault_num==8);
+    cprintf("read Virt Page a in lru_check_swap\n");
+    cprintf("%x\n",*(unsigned char *)0x1000);
+    assert(pgfault_num==8);
     return 0;
 }
 
