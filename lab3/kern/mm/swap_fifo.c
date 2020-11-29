@@ -108,16 +108,13 @@ _lru_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, int 
     //record the page access situlation
     /*LAB3 EXERCISE 2: YOUR CODE*/ 
     //(1)link the most recent arrival page at the back of the pra_list_head qeueue.
-    list_entry_t *p = head->next;
-    pte_t *ptepOfEntry = get_pte(mm->pgdir, le2page(entry, pra_page_link)->pra_vaddr, 0);
-    while(p != head){
-        if(*ptepOfEntry == *get_pte(mm->pgdir, le2page(p, pra_page_link)->pra_vaddr, 0)){
-            list_del(p);
-            break;
-        }
-        p = p->next;
-    }
     list_add_after(head, entry);
+    pte_t *ptep = get_pte(mm->pgdir, page->pra_vaddr, 0);
+    if(ptep != NULL)
+    {
+        *ptep |= PTE_A;
+    }
+    
     return 0;
 }
 
@@ -195,20 +192,47 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
 static int
 _lru_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick, list_entry_t *curr)
 {
-     list_entry_t *head=(list_entry_t*) mm->sm_priv;
-         assert(head != NULL);
-     assert(in_tick==0);
-     /* Select the victim */
-     /*LAB3 EXERCISE 2: YOUR CODE*/ 
-     //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
-     //(2)  assign the value of *ptr_page to the addr of this page
-     list_entry_t *tail = head->prev;//获取尾部的节点（最早被换入的页面）
-     assert(head != tail);//检查头尾是否相连
-     struct Page *p = le2page(tail, pra_page_link); 
-     assert(p != NULL);
-     list_del(tail);
-     *ptr_page = p;//还原该页的虚拟地址
-     return 0;
+    list_entry_t *head=(list_entry_t*) mm->sm_priv;
+    assert(head != NULL);
+    assert(in_tick==0);
+    /* Select the victim */
+    /*LAB3 EXERCISE 2: YOUR CODE*/ 
+    //(1)  unlink the  earliest arrival page in front of pra_list_head qeueue
+    //(2)  assign the value of *ptr_page to the addr of this page
+    curr = head->prev;
+    while(curr != head){
+        struct Page *p = le2page(curr, pra_page_link);
+        assert(p != NULL);
+        pte_t *ptep = get_pte(mm->pgdir, p->pra_vaddr, 0);
+        if(ptep < 0x1000)
+        {
+            cprintf("unvalid address!");
+            break;
+        }
+        else if(*ptep & PTE_A)
+        {
+	    assert(head != head->prev);
+            *ptep &= ~PTE_A;
+            list_entry_t *temp = curr;
+            curr = curr->prev;
+	    curr->next = temp->next;
+            temp->next->prev = curr;
+	    list_add_after(head, temp);
+            cprintf("%d is moved to the top of the stack\n",temp);
+        }
+	   else
+        {
+	    cprintf("If you saw this, it means the \"while\" do nothing\n");
+	    curr = curr->prev;
+    	   }
+    }
+    list_entry_t *tail = head->prev;//获取尾部的节点
+    assert(head != tail);//检查头尾是否相连
+    struct Page *pa = le2page(tail, pra_page_link); 
+    assert(pa != NULL);
+    list_del(tail);
+    *ptr_page = pa;//还原该页的虚拟地址
+    return 0;
 }
 
 static int
