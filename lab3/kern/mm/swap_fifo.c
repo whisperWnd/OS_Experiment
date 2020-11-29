@@ -93,7 +93,7 @@ _clock_map_swappable(struct mm_struct *mm, uintptr_t addr, struct Page *page, in
     pte_t *ptep = get_pte(mm->pgdir, page->pra_vaddr, 0);
     if(ptep != NULL)
     {
-        *ptep |= PTE_A;
+        //*ptep |= PTE_A;
     } 
     return 0;
 }
@@ -157,6 +157,11 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
         struct Page *p = le2page(curr, pra_page_link);
         assert(p != NULL);
         pte_t *ptep = get_pte(mm->pgdir, p->pra_vaddr, 0);
+        if(curr == head)//skip the head node
+        {
+            curr = curr->prev;
+            continue;
+        }
         if(ptep < 0x1000)
         {
             cprintf("unvalid address!");
@@ -250,40 +255,40 @@ _fifo_check_swap(void) {
 
 static int
 _clock_check_swap(void) {
-    cprintf("write Virt Page c in fifo_check_swap\n");
+    cprintf("write Virt Page c in clock_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
     assert(pgfault_num==4);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in clock_check_swap\n");
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==4);
-    cprintf("write Virt Page d in fifo_check_swap\n");
+    cprintf("write Virt Page d in clock_check_swap\n");
     *(unsigned char *)0x4000 = 0x0d;
     assert(pgfault_num==4);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in clock_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==4);
-    cprintf("write Virt Page e in fifo_check_swap\n");
+    cprintf("write Virt Page e in clock_check_swap\n");
     *(unsigned char *)0x5000 = 0x0e;
     assert(pgfault_num==5);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in clock_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==5);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in clock_check_swap\n");
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==6);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in clock_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==7);
-    cprintf("write Virt Page c in fifo_check_swap\n");
+    cprintf("write Virt Page c in clock_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
     assert(pgfault_num==8);
-    cprintf("write Virt Page d in fifo_check_swap\n");
+    cprintf("write Virt Page d in clock_check_swap\n");
     *(unsigned char *)0x4000 = 0x0d;
     assert(pgfault_num==9);
-    cprintf("write Virt Page e in fifo_check_swap\n");
+    cprintf("write Virt Page e in clock_check_swap\n");
     *(unsigned char *)0x5000 = 0x0e;
     assert(pgfault_num==10);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in clock_check_swap\n");
     assert(*(unsigned char *)0x1000 == 0x0a);
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==11);
@@ -292,40 +297,40 @@ _clock_check_swap(void) {
 
 static int
 _lru_check_swap(void) {
-    cprintf("write Virt Page c in fifo_check_swap\n");
+    cprintf("write Virt Page c in lru_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
     assert(pgfault_num==4);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in lru_check_swap\n");
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==4);
-    cprintf("write Virt Page d in fifo_check_swap\n");
+    cprintf("write Virt Page d in lru_check_swap\n");
     *(unsigned char *)0x4000 = 0x0d;
     assert(pgfault_num==4);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in lru_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==4);
-    cprintf("write Virt Page e in fifo_check_swap\n");
+    cprintf("write Virt Page e in lru_check_swap\n");
     *(unsigned char *)0x5000 = 0x0e;
     assert(pgfault_num==5);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in lru_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==5);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in lru_check_swap\n");
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==6);
-    cprintf("write Virt Page b in fifo_check_swap\n");
+    cprintf("write Virt Page b in lru_check_swap\n");
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==7);
-    cprintf("write Virt Page c in fifo_check_swap\n");
+    cprintf("write Virt Page c in lru_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
     assert(pgfault_num==8);
-    cprintf("write Virt Page d in fifo_check_swap\n");
+    cprintf("write Virt Page d in lru_check_swap\n");
     *(unsigned char *)0x4000 = 0x0d;
     assert(pgfault_num==9);
-    cprintf("write Virt Page e in fifo_check_swap\n");
+    cprintf("write Virt Page e in lru_check_swap\n");
     *(unsigned char *)0x5000 = 0x0e;
     assert(pgfault_num==10);
-    cprintf("write Virt Page a in fifo_check_swap\n");
+    cprintf("write Virt Page a in lru_check_swap\n");
     assert(*(unsigned char *)0x1000 == 0x0a);
     *(unsigned char *)0x1000 = 0x0a;
     assert(pgfault_num==11);
