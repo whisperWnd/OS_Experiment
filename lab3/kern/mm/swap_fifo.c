@@ -144,12 +144,23 @@ _fifo_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick
 static int 
 _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick, list_entry_t *curr)
 {
+    int dirty_flag = 0;
+    int page_num = 0;
     list_entry_t *head = (list_entry_t*) mm->sm_priv;
     assert(head != NULL);
     assert(in_tick==0);
     if(curr == NULL)
+    {
         curr = head->prev;
-    //assert(curr != head);
+        assert(curr != head);
+    }
+    list_entry_t *temp = curr->prev;
+    while(temp != curr)//记录page个数
+    {
+        temp = temp->prev;
+        page_num++;
+    }
+    temp = NULL;//清除temp的值  
     do{
         struct Page *p = le2page(curr, pra_page_link);
         assert(p != NULL);
@@ -159,11 +170,15 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
             curr = curr->prev;
             continue;
         }
-        if(ptep < 0x1000)
+        if(p->pra_vaddr < 0x1000)
         {
-            cprintf("unvalid address!");
+            cprintf("Unvalid virtual address!");
             break;
         }
+	else
+	{
+	    cprintf("Current virtual address is 0x%x\n",p->pra_vaddr);
+	}
         if(*ptep & PTE_A)
         {
             *ptep &= ~PTE_A;
@@ -171,13 +186,18 @@ _clock_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tic
         }
         else
         {
-            if(*ptep & PTE_D)
+            if(*ptep & PTE_D && (temp != curr))
             {
-                *ptep &= ~PTE_D;
-                cprintf("PTE_D is set to 0\n");
+                if(!dirty_flag)
+                {
+                    dirty_flag = 1;
+                    temp = curr;
+                }   
+                cprintf("PTE_D is 1\n");
             }
             else
             {
+                *ptep &= ~PTE_D;     
                 curr = curr->prev;
                 list_del(curr->next);
                 *ptr_page = p;
@@ -204,9 +224,9 @@ _lru_swap_out_victim(struct mm_struct *mm, struct Page ** ptr_page, int in_tick,
         struct Page *p = le2page(curr, pra_page_link);
         assert(p != NULL);
         pte_t *ptep = get_pte(mm->pgdir, p->pra_vaddr, 0);
-        if(ptep < 0x1000)
+        if(p->pra_vaddr < 0x1000)
         {
-            cprintf("unvalid address!");
+            cprintf("Unvalid virtual address!");
             break;
         }
         else if(*ptep & PTE_A)
@@ -292,10 +312,10 @@ _clock_check_swap(void) {
     *(unsigned char *)0x2000 = 0x0b;
     assert(pgfault_num==4);
     cprintf("write Virt Page e in clock_check_swap\n");
-    *(unsigned char *)0x5000 = 0x0e;
+    cprintf("%x\n", *(unsigned char *)0x5000);
     assert(pgfault_num==5);
-    cprintf("write Virt Page b in clock_check_swap\n");
-    *(unsigned char *)0x2000 = 0x0b;
+    cprintf("write Virt Page d in clock_check_swap\n");
+    *(unsigned char *)0x4000 = 0x0d;
     assert(pgfault_num==5);
     cprintf("write Virt Page a in clock_check_swap\n");
     *(unsigned char *)0x1000 = 0x0a;
@@ -305,17 +325,17 @@ _clock_check_swap(void) {
     assert(pgfault_num==7);
     cprintf("write Virt Page c in clock_check_swap\n");
     *(unsigned char *)0x3000 = 0x0c;
-    assert(pgfault_num==8);
+    assert(pgfault_num==7);
     cprintf("write Virt Page d in clock_check_swap\n");
     *(unsigned char *)0x4000 = 0x0d;
-    assert(pgfault_num==9);
+    assert(pgfault_num==7);
     cprintf("write Virt Page e in clock_check_swap\n");
     *(unsigned char *)0x5000 = 0x0e;
-    assert(pgfault_num==10);
+    assert(pgfault_num==8);
     cprintf("write Virt Page a in clock_check_swap\n");
     assert(*(unsigned char *)0x1000 == 0x0a);
     *(unsigned char *)0x1000 = 0x0a;
-    assert(pgfault_num==11);
+    assert(pgfault_num==8);
     return 0;
 }
 
