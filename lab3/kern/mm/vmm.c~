@@ -421,7 +421,7 @@ do_pgfault(struct mm_struct *mm, uint32_t error_code, uintptr_t addr) {
                 goto failed;
             } 
             page_insert(mm->pgdir, page, addr, perm);//建立虚拟地址和物理地址的映射关系
-            swap_map_swappable(mm, addr, page, 1);//将该页设置为可置换的
+            swap_map_swappable(mm, addr, page, 1, NULL);//将该页设置为可置换的
             page->pra_vaddr = addr;
             //assert(page_ref(page) == 1);
        }

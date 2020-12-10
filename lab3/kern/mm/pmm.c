@@ -372,22 +372,18 @@ get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     }
     return NULL;          // (8) return page table entry
 #endif
-uintptr_t *pdep = &pgdir[PDX(la)];  //find page directory entry //变量pdep获取PDE表中索引为虚拟地址la高10位的值，即该虚拟地址所在的PTE表的head地址
-    if (!(*pdep & PTE_P)) { // check if entry is not present //检查找到的PTE表中的标志位是否为PTE_P，如果不是则说明PTE表不存在
-        //create==0表示不需要分配
-        if (!create) { 
+    pde_t *pdep = &pgdir[PDX(la)];
+    if (!(*pdep & PTE_P)) {
+        struct Page *page;
+        if (!create || (page = alloc_page()) == NULL) {
             return NULL;
         }
-        struct Page *page = alloc_page();// 新建页并调用alloc_page函数为page分配页
-        set_page_ref(page, 1); // 设置page的引用次数reg为一
-        uintptr_t pa = page2pa(page);  //get linear address of page //pa为该页物理地址
+        set_page_ref(page, 1);
+        uintptr_t pa = page2pa(page);
         memset(KADDR(pa), 0, PGSIZE);
-        *pdep = pa | PTE_U | PTE_W | PTE_P; //将pa放入*pdep处的页表中并设置控制位
+        *pdep = pa | PTE_U | PTE_W | PTE_P;
     }
-    return &((pte_t *)KADDR(PDE_ADDR(*pdep)))[PTX(la)]; 
-    //PDE_ADDR(*pdep)将*pdep中的值转化为对应PTE表的物理地址并通过KADDR直接访问
-    //PTX(la)为虚拟地址la的中间10位，即PTE表项索引
-    //二者结合就是la的PTE了
+    return &((pte_t *)KADDR(PDE_ADDR(*pdep)))[PTX(la)];
 }
 
 //get_page - get related Page struct for linear address la using PDT pgdir
@@ -425,7 +421,7 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
      *   PTE_P           0x001                   // page table/directory entry flags bit : Present
      */
 #if 0
-    if (0) {                      //(1) check if this page table entry is present
+    if (0) {                      //(1) check if page directory is present
         struct Page *page = NULL; //(2) find corresponding page to pte
                                   //(3) decrease page reference
                                   //(4) and free this page when page reference reachs 0
@@ -433,13 +429,13 @@ page_remove_pte(pde_t *pgdir, uintptr_t la, pte_t *ptep) {
                                   //(6) flush tlb
     }
 #endif
-if(*ptep & PTE_P)
-    {
-        struct Page * page = pte2page(*ptep);//获取要释放的页面
-        if(!page_ref_dec(page))//如果该页的引用次数为0，它将会被释放
+    if (*ptep & PTE_P) {
+        struct Page *page = pte2page(*ptep);
+        if (page_ref_dec(page) == 0) {
             free_page(page);
-        *ptep = 0;//清除页表存储的地址
-        tlb_invalidate(pgdir, la);//刷新TLB（快表）
+        }
+        *ptep = 0;
+        tlb_invalidate(pgdir, la);
     }
 }
 
@@ -502,7 +498,7 @@ pgdir_alloc_page(pde_t *pgdir, uintptr_t la, uint32_t perm) {
             return NULL;
         }
         if (swap_init_ok){
-            swap_map_swappable(check_mm_struct, la, page, 0, NULL);
+            swap_map_swappable(check_mm_struct, la, page, 0);
             page->pra_vaddr=la;
             assert(page_ref(page) == 1);
             //cprintf("get No. %d  page: pra_vaddr %x, pra_link.prev %x, pra_link_next %x in pgdir_alloc_page\n", (page-pages), page->pra_vaddr,page->pra_page_link.prev, page->pra_page_link.next);

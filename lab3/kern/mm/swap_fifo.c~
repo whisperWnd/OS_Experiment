@@ -338,7 +338,7 @@ _clock_check_swap(void) {
     cprintf("write Virt Page a in clock_check_swap\n");
     assert(*(unsigned char *)0x1000 == 0x0a);
     *(unsigned char *)0x1000 = 0x0a;
-    assert(pgfault_num==8);
+    assert(pgfault_num==9);
     return 0;
 }
 
