@@ -323,7 +323,7 @@ pmm_init(void) {
 //  pgdir:  the kernel virtual base address of PDT
 //  la:     the linear address need to map
 //  create: a logical value to decide if alloc a page for PT
-// return vaule: the kernel virtual address of this pte
+// return value: the kernel virtual address of this pte
 pte_t *
 get_pte(pde_t *pgdir, uintptr_t la, bool create) {
     //三个参数为PDE表head指针，虚拟地址la，发生缺页时是否需要加页create
