@@ -225,10 +225,10 @@ kernel_thread(int (*fn)(void *), void *arg, uint32_t clone_flags) {
     memset(&tf, 0, sizeof(struct trapframe));
     tf.tf_cs = KERNEL_CS;
     tf.tf_ds = tf.tf_es = tf.tf_ss = KERNEL_DS;
-    tf.tf_regs.reg_ebx = (uint32_t)fn;
-    tf.tf_regs.reg_edx = (uint32_t)arg;
-    tf.tf_eip = (uint32_t)kernel_thread_entry;
-    return do_fork(clone_flags | CLONE_VM, 0, &tf);
+    tf.tf_regs.reg_ebx = (uint32_t)fn;//添加内核主体fn函数
+    tf.tf_regs.reg_edx = (uint32_t)arg;//添加函数参数,eax存储函数返回值
+    tf.tf_eip = (uint32_t)kernel_thread_entry;//内核线程执行的入口
+    return do_fork(clone_flags | CLONE_VM, 0, &tf);//调用函数完成创建工作
 }
 
 // setup_kstack - alloc pages with size KSTACKPAGE as process kernel stack
@@ -261,14 +261,16 @@ copy_mm(uint32_t clone_flags, struct proc_struct *proc) {
 //             - setup the kernel entry point and stack of process
 static void
 copy_thread(struct proc_struct *proc, uintptr_t esp, struct trapframe *tf) {
+    //在内核堆栈的顶部设置中断帧大小的一块栈空间
     proc->tf = (struct trapframe *)(proc->kstack + KSTACKSIZE) - 1;
-    *(proc->tf) = *tf;
-    proc->tf->tf_regs.reg_eax = 0;
-    proc->tf->tf_esp = esp;
-    proc->tf->tf_eflags |= FL_IF;
+    *(proc->tf) = *tf; //拷贝在kernel_thread函数建立的临时中断帧的初始值
+    proc->tf->tf_regs.reg_eax = 0;//设置当前函数的返回值（do_fork）
+    proc->tf->tf_esp = esp;//设置中断帧的栈指针
+    proc->tf->tf_eflags |= FL_IF;//使能中断,代表内核线程在执行过程中能被打断
 
-    proc->context.eip = (uintptr_t)forkret;
-    proc->context.esp = (uintptr_t)(proc->tf);
+    //process context,进程上下文，也称执行现场，用于恢复线程执行
+    proc->context.eip = (uintptr_t)forkret;//上一次停止执行时下一条指令的地址
+    proc->context.esp = (uintptr_t)(proc->tf);//上一次停止执行时的堆栈地址
 }
 
 /* do_fork -     parent process for a new child process
@@ -283,7 +285,7 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     if (nr_process >= MAX_PROCESS) {
         goto fork_out;
     }
-    ret = -E_NO_MEM;
+    ret = -E_NO_MEM;//缺少内存
     //LAB4:EXERCISE2 YOUR CODE
     /*
      * Some Useful MACROs, Functions and DEFINEs, you can use them in below implementation.
@@ -309,35 +311,35 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     //    5. insert proc_struct into hash_list && proc_list
     //    6. call wakeup_proc to make the new child process RUNNABLE
     //    7. set ret vaule using child proc's pid
-    proc = alloc_proc();
+    proc = alloc_proc();//分配并初始化进程块
     if(proc == NULL)
     {
         goto fork_out;
     }
 
     proc->parent = current;
-    if(setup_kstack(proc) != 0)
+    if(setup_kstack(proc) != 0)//分配并初始化内存栈
     {
         goto bad_fork_cleanup_proc;
     }
-    if(copy_mm(clone_flags, proc) != 0)
+    if(copy_mm(clone_flags, proc) != 0)//根据clone_flag标志复制或共享进程内存管理结构
     {
         goto bad_fork_cleanup_kstack;
     }
-    copy_thread(proc, stack, tf);
+    copy_thread(proc, stack, tf);//设置进程正常运行和调度所需的中断帧和执行上下文
 
     bool intr_flag;
     local_intr_save(intr_flag);
 
-    proc->pid = get_pid();
-    hash_proc(proc);
-    list_add(&proc_list,&(proc->list_link));
+    proc->pid = get_pid();//设置子进程的进程号
+    hash_proc(proc);//加入哈希表
+    list_add(&proc_list,&(proc->list_link));//加入进程链表
     
-    nr_process++;
+    nr_process++;//进程数增加
 
     local_intr_restore(intr_flag);
-    wakeup_proc(proc);
-    ret = proc->pid;
+    wakeup_proc(proc);//进程就绪
+    ret = proc->pid;//返回子进程id号
 fork_out:
     return ret;
 
