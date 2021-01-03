@@ -62,8 +62,9 @@ idt_init(void) {
         SETGATE(idt[i], 0, GD_KTEXT, __vectors[i], DPL_KERNEL);//使用非陷阱门描述符，在内核级设置中断向量表
 	}
 	// set for switch from user to kernel
-	SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);//设置用户级转向内核级的中断向量表
-	// load the IDT
+    //SETGATE(idt[T_SWITCH_TOK], 0, GD_KTEXT, __vectors[T_SWITCH_TOK], DPL_USER);//设置用户级转向内核级的中断向量表
+	SETGATE(idt[T_SYSCALL], 1, GD_KTEXT, __vectors[T_SYSCALL], DPL_USER);
+    // load the IDT
 	lidt(&idt_pd);//加载中断向量表
 }
 
@@ -235,7 +236,9 @@ trap_dispatch(struct trapframe *tf) {
         ticks++;
 	    if(ticks%TICK_NUM == 0)
         {
-            print_ticks();
+            //print_ticks();
+            assert(current != NULL);
+            current->need_resched = 1;
         }
         break;
     case IRQ_OFFSET + IRQ_COM1:

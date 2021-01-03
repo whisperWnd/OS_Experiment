@@ -122,6 +122,9 @@ alloc_proc(void) {
 
         proc->flags = 0;
         memset(proc->name, 0, PROC_NAME_LEN);
+
+        proc->wait_state = 0;
+        proc->cptr = proc->optr = proc->yptr = NULL;
     }
     return proc;
 }
@@ -425,6 +428,8 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
     }
 
     proc->parent = current;
+    assert(current->wait_state == 0);
+
     if(setup_kstack(proc) != 0)//分配并初始化内存栈
     {
         goto bad_fork_cleanup_proc;
@@ -440,9 +445,10 @@ do_fork(uint32_t clone_flags, uintptr_t stack, struct trapframe *tf) {
 
     proc->pid = get_pid();//设置子进程的进程号
     hash_proc(proc);//加入哈希表
-    list_add(&proc_list,&(proc->list_link));//加入进程链表
+    //list_add(&proc_list,&(proc->list_link));//加入进程链表
     
-    nr_process++;//进程数增加
+    //nr_process++;//进程数增加
+    set_links(proc);
 
     local_intr_restore(intr_flag);
     wakeup_proc(proc);//进程就绪
@@ -645,6 +651,11 @@ load_icode(unsigned char *binary, size_t size) {
      *          tf_eip should be the entry point of this binary program (elf->e_entry)
      *          tf_eflags should be set to enable computer to produce Interrupt
      */
+    tf->tf_cs = USER_CS;
+    tf->tf_ds = tf->tf_es = tf->tf_ss = USER_DS;
+    tf->tf_esp = USTACKTOP;
+    tf->tf_eip = elf->e_entry;
+    tf->tf_eflags = FL_IF;
     ret = 0;
 out:
     return ret;
